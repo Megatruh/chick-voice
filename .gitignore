@@ -1,0 +1,122 @@
+# ============================================================================
+# ChickVoice Project .gitignore
+# ============================================================================
+
+# ============================================================================
+# DATASET & MODEL FILES (Large Files - DO NOT COMMIT)
+# ============================================================================
+
+# Dataset folder
+Poultry_Vocalization Signal_Dataset_for_Early_Disease_Detection/
+Chicken_Audio_Dataset/
+
+# Model files (H5 format - Keras/TensorFlow)
+*.h5
+
+# Model files (TensorFlow Lite format)
+*.tflite
+
+# Other large data files
+*.pickle
+*.pkl
+*.npy
+*.npz
+
+# ============================================================================
+# PYTHON VIRTUAL ENVIRONMENT
+# ============================================================================
+
+venv/
+ENV/
+env/
+.venv/
+.ENV
+
+# ============================================================================
+# PYTHON CACHE & COMPILED FILES
+# ============================================================================
+
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+
+# ============================================================================
+# IDE & EDITOR FILES
+# ============================================================================
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iml
+*.iws
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# ============================================================================
+# OPERATING SYSTEM FILES
+# ============================================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+*.swp
+
+# Windows
+Thumbs.db
+Desktop.ini
+*.lnk
+
+# Linux
+.directory
+
+# ============================================================================
+# LOGGING & TEMPORARY FILES
+# ============================================================================
+
+*.log
+*.tmp
+*.temp
+.ipynb_checkpoints/
+*.ipynb
+
+# ============================================================================
+# PROJECT SPECIFIC
+# ============================================================================
+
+# TensorFlow/Keras artifacts
+.keras/
+*.ckpt
+*.pb
+
+# Training output (optional - uncomment if you want to ignore)
+# training_history/
+# predictions/
+
+# ============================================================================
+# DO NOT IGNORE (Whitelist)
+# ============================================================================
+# To commit specific files even if patterns above match them, use:
+# !important_file.txt
