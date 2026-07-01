@@ -1,8 +1,11 @@
 import os
 import numpy as np
 import librosa
+import matplotlib.pyplot as plt
+import seaborn as sns
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import confusion_matrix
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, Conv1D, MaxPooling1D, Flatten
 from tensorflow.keras.utils import to_categorical
@@ -135,3 +138,88 @@ model_name = "chickvoice_mfcc_cnn.h5"
 model.save(model_name)
 print(f"Model berhasil disimpan dengan nama: {model_name}")
 print("Label classes mapping:", dict(zip(le.classes_, le.transform(le.classes_))))
+
+# ==========================================
+# 8. VISUALISASI EVALUASI MODEL
+# ==========================================
+print("\nMembuat grafik evaluasi model...")
+
+# --- Konfigurasi Umum ---
+PLOT_OUTPUT_DIR = "evaluation_plots"
+os.makedirs(PLOT_OUTPUT_DIR, exist_ok=True)
+sns.set_theme(style="darkgrid", palette="muted")
+
+# ------------------------------------------
+# 8a. Grafik Akurasi (Training vs Validation)
+# ------------------------------------------
+fig_acc, ax_acc = plt.subplots(figsize=(10, 6))
+ax_acc.plot(history.history['accuracy'], label='Training Accuracy', linewidth=2, marker='o', markersize=4)
+ax_acc.plot(history.history['val_accuracy'], label='Validation Accuracy', linewidth=2, marker='s', markersize=4, linestyle='--')
+ax_acc.set_title('Model Accuracy: Training vs Validation', fontsize=16, fontweight='bold', pad=15)
+ax_acc.set_xlabel('Epoch', fontsize=13)
+ax_acc.set_ylabel('Accuracy', fontsize=13)
+ax_acc.legend(fontsize=11, loc='lower right')
+ax_acc.set_ylim([0, 1.05])
+ax_acc.tick_params(axis='both', labelsize=11)
+fig_acc.tight_layout()
+
+acc_path = os.path.join(PLOT_OUTPUT_DIR, "plot_accuracy.png")
+fig_acc.savefig(acc_path, dpi=300, bbox_inches='tight')
+plt.close(fig_acc)
+print(f"✔ Grafik Akurasi disimpan: {acc_path}")
+
+# ------------------------------------------
+# 8b. Grafik Loss (Training vs Validation)
+# ------------------------------------------
+fig_loss, ax_loss = plt.subplots(figsize=(10, 6))
+ax_loss.plot(history.history['loss'], label='Training Loss', linewidth=2, marker='o', markersize=4, color='#e05c5c')
+ax_loss.plot(history.history['val_loss'], label='Validation Loss', linewidth=2, marker='s', markersize=4, linestyle='--', color='#f5a623')
+ax_loss.set_title('Model Loss: Training vs Validation', fontsize=16, fontweight='bold', pad=15)
+ax_loss.set_xlabel('Epoch', fontsize=13)
+ax_loss.set_ylabel('Loss', fontsize=13)
+ax_loss.legend(fontsize=11, loc='upper right')
+ax_loss.tick_params(axis='both', labelsize=11)
+fig_loss.tight_layout()
+
+loss_path = os.path.join(PLOT_OUTPUT_DIR, "plot_loss.png")
+fig_loss.savefig(loss_path, dpi=300, bbox_inches='tight')
+plt.close(fig_loss)
+print(f"✔ Grafik Loss disimpan: {loss_path}")
+
+# ------------------------------------------
+# 8c. Confusion Matrix
+# ------------------------------------------
+# Prediksi kelas dari X_test
+y_pred_proba = model.predict(X_test, verbose=0)
+y_pred_indices = np.argmax(y_pred_proba, axis=1)
+y_true_indices = np.argmax(y_test, axis=1)
+
+# Decode indeks numerik kembali ke nama kelas asli
+class_labels = le.classes_   # ['Healthy', 'Noise', 'Unhealthy'] (urutan sesuai LabelEncoder)
+cm = confusion_matrix(y_true_indices, y_pred_indices)
+
+fig_cm, ax_cm = plt.subplots(figsize=(8, 7))
+sns.heatmap(
+    cm,
+    annot=True,
+    fmt='d',
+    cmap='Blues',
+    xticklabels=class_labels,
+    yticklabels=class_labels,
+    linewidths=0.5,
+    linecolor='white',
+    annot_kws={"size": 14, "weight": "bold"},
+    ax=ax_cm
+)
+ax_cm.set_title('Confusion Matrix – ChickVoice CNN', fontsize=16, fontweight='bold', pad=15)
+ax_cm.set_xlabel('Predicted Label', fontsize=13, labelpad=10)
+ax_cm.set_ylabel('True Label', fontsize=13, labelpad=10)
+ax_cm.tick_params(axis='both', labelsize=12)
+fig_cm.tight_layout()
+
+cm_path = os.path.join(PLOT_OUTPUT_DIR, "plot_confusion_matrix.png")
+fig_cm.savefig(cm_path, dpi=300, bbox_inches='tight')
+plt.close(fig_cm)
+print(f"✔ Confusion Matrix disimpan: {cm_path}")
+
+print(f"\n✅ Semua grafik evaluasi berhasil disimpan di folder: '{PLOT_OUTPUT_DIR}/'")
