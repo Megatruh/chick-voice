@@ -1,529 +1,1061 @@
-# ChickVoice 🎙️
+# ChickVoice
 
-**Sistem Deteksi Dini Penyakit Pernapasan Ayam Broiler Berbasis Analisis Akustik dan IoT**
+**Early Warning System berbasis analisis bioakustik, machine learning, dan Internet of Things untuk mendeteksi indikasi awal gangguan pernapasan pada ayam petelur.**
+
+![Python](https://img.shields.io/badge/Python-3.11-blue)
+![TensorFlow](https://img.shields.io/badge/TensorFlow-Keras-orange)
+![Platform](https://img.shields.io/badge/Platform-Fedora%20Linux-lightgrey)
+![Status](https://img.shields.io/badge/Status-Research%20Prototype-yellow)
 
 ---
 
-## 📋 Daftar Isi
+## Daftar Isi
 
-- [Pengenalan Proyek](#pengenalan-proyek)
+- [Tentang ChickVoice](#tentang-chickvoice)
 - [Fitur Utama](#fitur-utama)
+- [Arsitektur Sistem](#arsitektur-sistem)
+- [Struktur Repository](#struktur-repository)
 - [Persyaratan Sistem](#persyaratan-sistem)
-- [Instalasi dan Setup](#instalasi-dan-setup)
-- [Struktur Proyek](#struktur-proyek)
-- [Penggunaan](#penggunaan)
-- [Dataset](#dataset)
-- [Arsitektur Model](#arsitektur-model)
+- [Instalasi pada Fedora](#instalasi-pada-fedora)
+- [Persiapan Dataset](#persiapan-dataset)
+- [Menjalankan Simulasi](#menjalankan-simulasi)
+- [Menjalankan Prediksi Satu Audio](#menjalankan-prediksi-satu-audio)
+- [Menjalankan Training Model](#menjalankan-training-model)
+- [Konversi TensorFlow Lite](#konversi-tensorflow-lite)
+- [Preprocessing Audio](#preprocessing-audio)
+- [API dan Database](#api-dan-database)
+- [Zona Waktu WIB](#zona-waktu-wib)
+- [File yang Tidak Disimpan di Git](#file-yang-tidak-disimpan-di-git)
+- [Troubleshooting](#troubleshooting)
+- [Batasan Sistem](#batasan-sistem)
 - [Tim Pengembang](#tim-pengembang)
 - [Lisensi](#lisensi)
+- [Referensi](#referensi)
 
 ---
 
-## 📖 Pengenalan Proyek
+## Tentang ChickVoice
 
-**ChickVoice** adalah sistem otomatis berbasis Artificial Intelligence yang dirancang untuk mendeteksi dini penyakit pernapasan pada ayam broiler melalui analisis sinyal akustik (suara) di kandang. Sistem ini memanfaatkan:
+ChickVoice merupakan purwarupa sistem pemantauan kesehatan ayam petelur berbasis suara.
 
-- **Ekstraksi Fitur Suara (MFCC)**: Mel-Frequency Cepstral Coefficients untuk menganalisis karakteristik akustik rekaman audio
-- **Deep Learning (CNN 1D)**: Convolutional Neural Network untuk klasifikasi pola suara
-- **Edge Computing**: Konversi model ke TensorFlow Lite untuk eksekusi on-device di mikrokontroler (ESP32/Raspberry Pi)
+Sistem menganalisis rekaman audio untuk mengklasifikasikan tiga kondisi:
 
-Dengan sistem ini, peternak dapat melakukan monitoring kesehatan ayam secara real-time dan responsif terhadap deteksi dini penyakit.
+1. `Healthy`, yaitu suara ayam sehat.
+2. `Noise`, yaitu kebisingan lingkungan kandang.
+3. `Unhealthy`, yaitu suara yang memiliki indikasi gangguan kesehatan atau pernapasan.
+
+ChickVoice menggunakan:
+
+- **Mel-Frequency Cepstral Coefficients atau MFCC** untuk mengekstrak karakteristik audio.
+- **1D Convolutional Neural Network atau 1D-CNN** untuk melakukan klasifikasi.
+- **TensorFlow Lite** untuk menyiapkan model agar dapat dikembangkan menuju perangkat edge.
+- **FastAPI** sebagai REST API.
+- **SQLite** sebagai basis data simulasi.
+- **Streamlit** sebagai dashboard pemantauan zona kandang.
+
+ChickVoice merupakan sistem peringatan dini. Sistem ini tidak menggantikan diagnosis dokter hewan atau pemeriksaan laboratorium.
 
 ---
 
-## ✨ Fitur Utama
+## Fitur Utama
 
-- ✅ **Klasifikasi 3-Kelas**: Membedakan suara normal (Healthy), noise, dan suara ayam sakit (Unhealthy)
-- ✅ **Ekstraksi MFCC**: Menganalisis karakteristik spektral suara dengan akurat
-- ✅ **CNN 1D Architecture**: Model deep learning yang efisien untuk data audio time-series
-- ✅ **Model Optimization**: Konversi ke TensorFlow Lite dengan quantization untuk perangkat edge
-- ✅ **On-Device Inference**: Dapat berjalan langsung di mikrokontroler dengan resource terbatas
-- ✅ **Dataset Terstruktur**: Dataset audio Poultry Vocalization dengan label yang jelas
+- Klasifikasi audio tiga kelas: `Healthy`, `Noise`, dan `Unhealthy`.
+- Ekstraksi 40 koefisien MFCC.
+- Input model berukuran `(200, 40)`.
+- Model klasifikasi berbasis 1D-CNN.
+- Model Keras dalam format `.h5`.
+- Model edge dalam format `.tflite`.
+- Simulasi pemantauan Zona A sampai Zona D.
+- REST API untuk menerima hasil inferensi.
+- Basis data SQLite untuk menyimpan event.
+- Dashboard heatmap kondisi kandang.
+- Penyimpanan confidence score setiap prediksi.
+- Penyimpanan label sumber dan hasil prediksi model.
+- Skenario pengujian `normal`, `outbreak`, dan `noisy`.
+- Dukungan simulasi otomatis melalui shell script.
 
 ---
 
-## ⚠️ Persyaratan Sistem
+## Arsitektur Sistem
 
-### Python Version (PENTING!)
-
+```text
+File audio WAV
+      │
+      ▼
+librosa.load(sr=None)
+      │
+      ▼
+Ekstraksi 40 MFCC
+      │
+      ▼
+Padding atau pemotongan menjadi 200 frame
+      │
+      ▼
+Transpose menjadi bentuk (200, 40)
+      │
+      ▼
+Model 1D-CNN
+      │
+      ├── Healthy
+      ├── Noise
+      └── Unhealthy
+      │
+      ▼
+HTTP POST
+      │
+      ▼
+FastAPI REST API
+      │
+      ▼
+SQLite Database
+      │
+      ▼
+Streamlit Dashboard
 ```
-🔴 WAJIB MENGGUNAKAN PYTHON 3.11
-❌ JANGAN gunakan Python 3.12 atau 3.13
-❌ JANGAN gunakan Python 3.10 atau lebih rendah
+
+Model menerima bentuk input:
+
+```text
+(None, 200, 40)
 ```
 
-**Alasan**: TensorFlow memiliki dukungan terbatas untuk Python versi 3.12+ pada Windows. Python 3.11 adalah versi paling stabil untuk proyek ini.
+Model menghasilkan tiga probabilitas:
 
-### Persyaratan Perangkat
+```text
+(None, 3)
+```
 
-| Komponen    | Minimal    | Rekomendasi                                        |
-| ----------- | ---------- | -------------------------------------------------- |
-| **OS**      | Windows 10 | Windows 10/11                                      |
-| **Python**  | 3.11.x     | 3.11.x (latest)                                    |
-| **RAM**     | 4 GB       | 8 GB+                                              |
-| **Storage** | 5 GB       | 10 GB+                                             |
-| **GPU**     | -          | NVIDIA CUDA 11.8+ (opsional, mempercepat training) |
+Urutan kelas model:
 
-### Dependency Library
-
-- **TensorFlow** 2.13+ - Framework deep learning
-- **NumPy** - Komputasi numerik
-- **Librosa** - Analisis audio dan ekstraksi fitur MFCC
-- **Scikit-learn** - Preprocessing dan utility ML
+```text
+0 = Healthy
+1 = Noise
+2 = Unhealthy
+```
 
 ---
 
-## 🔧 Instalasi dan Setup
+## Struktur Repository
 
-### ✅ Step 1: Install Python 3.11
-
-1. Download Python 3.11 dari [python.org](https://www.python.org/downloads/)
-2. Jalankan installer
-3. **PENTING**: Centang opsi `Add Python 3.11 to PATH`
-4. Klik `Install Now`
-
-Verifikasi instalasi dengan membuka **Command Prompt (CMD)** atau **PowerShell** dan jalankan:
-
-```cmd
-python --version
+```text
+lkti_dl_03-07/
+├── chickvoice_mfcc_cnn.h5
+├── chickvoice_model.tflite
+├── convert_tflite.py
+├── main.py
+├── README.md
+├── README_SIMULATION.md
+├── requirements-simulation.txt
+│
+├── evaluation_plots/
+│   ├── plot_accuracy.png
+│   ├── plot_confusion_matrix.png
+│   └── plot_loss.png
+│
+├── Poultry_Vocalization Signal_Dataset_for_Early_Disease_Detection/
+│   ├── Chicken_Audio_Dataset/
+│   │   ├── Healthy/
+│   │   ├── Noise/
+│   │   └── Unhealthy/
+│   └── Chicken_Audio_Dataset.tar.gz
+│
+└── simulation/
+    ├── __init__.py
+    ├── api.py
+    ├── audio_simulator.py
+    ├── config.py
+    ├── dashboard.py
+    ├── model_utils.py
+    ├── run_all.sh
+    ├── chickvoice.db
+    └── logs/
 ```
 
-Output yang diharapkan: `Python 3.11.x`
+File database, log, virtual environment, cache Python, dan dataset dapat dikecualikan dari Git melalui `.gitignore`.
 
 ---
 
-### ✅ Step 2: Clone atau Download Proyek
+## Persyaratan Sistem
 
-Jika menggunakan Git:
+### Perangkat lunak
 
-```cmd
-git clone <repository-url>
+- Fedora Linux atau distribusi Linux lain.
+- Python 3.11.
+- Git.
+- pip.
+- Python virtual environment.
+- libsndfile.
+- Browser modern.
+
+### Perangkat minimum
+
+| Komponen | Minimum | Rekomendasi |
+|---|---:|---:|
+| RAM | 4 GB | 8 GB atau lebih |
+| Penyimpanan kosong | 3 GB | 5 GB atau lebih |
+| CPU | Dual-core | Quad-core atau lebih |
+| GPU | Tidak wajib | GPU kompatibel TensorFlow untuk training |
+
+GPU tidak diperlukan untuk menjalankan simulasi dan prediksi satu file.
+
+---
+
+## Instalasi pada Fedora
+
+### 1. Instal dependency sistem
+
+```bash
+sudo dnf install -y \
+  python3.11 \
+  python3.11-devel \
+  python3-pip \
+  gcc \
+  gcc-c++ \
+  git \
+  curl \
+  unzip \
+  libsndfile \
+  libsndfile-devel
+```
+
+Periksa versi Python:
+
+```bash
+python3.11 --version
+```
+
+Output yang diharapkan:
+
+```text
+Python 3.11.x
+```
+
+### 2. Clone repository
+
+```bash
+git clone <URL_REPOSITORY>
 cd lkti_dl_03-07
 ```
 
-Atau download ZIP dan ekstrak folder proyek.
+Ganti `<URL_REPOSITORY>` dengan URL repository Git yang digunakan oleh tim.
 
----
+### 3. Buat virtual environment
 
-### ✅ Step 3: Buat Virtual Environment
-
-Buka **Command Prompt (CMD)** atau **PowerShell** di folder proyek dan jalankan:
-
-```cmd
-python -m venv venv
+```bash
+python3.11 -m venv venv
 ```
 
-Perintah ini akan membuat folder `venv` (Virtual Environment) di proyek Anda.
+### 4. Aktifkan virtual environment
 
----
-
-### ✅ Step 4: Aktifkan Virtual Environment
-
-#### Untuk CMD (Command Prompt):
-
-```cmd
-venv\Scripts\activate
+```bash
+source venv/bin/activate
 ```
 
-#### Untuk PowerShell:
+Prompt terminal akan memiliki awalan:
 
-```powershell
-venv\Scripts\Activate.ps1
+```text
+(venv)
 ```
 
-**Catatan**: Jika PowerShell menampilkan error tentang execution policy, jalankan terlebih dahulu:
+### 5. Upgrade pip
 
-```powershell
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```bash
+python -m pip install --upgrade pip setuptools wheel
 ```
 
-Setelah aktivasi, prompt Anda akan berubah menjadi:
+### 6. Instal dependency simulasi
 
-```
-(venv) C:\path\to\project>
-```
-
-Prefix `(venv)` menandakan virtual environment sudah aktif.
-
----
-
-### ✅ Step 5: Upgrade pip
-
-Pastikan pip (package manager) sudah versi terbaru:
-
-```cmd
-python -m pip install --upgrade pip
+```bash
+python -m pip install -r requirements-simulation.txt
 ```
 
----
+Jika dependency untuk training belum tersedia, jalankan:
 
-### ✅ Step 6: Instalasi Library Dependencies
-
-Jalankan perintah berikut untuk menginstal semua dependencies:
-
-```cmd
-pip install tensorflow numpy librosa scikit-learn
+```bash
+python -m pip install \
+  tensorflow \
+  numpy \
+  librosa \
+  soundfile \
+  scikit-learn \
+  matplotlib \
+  pandas \
+  fastapi \
+  "uvicorn[standard]" \
+  requests \
+  streamlit \
+  streamlit-autorefresh
 ```
 
-**Penjelasan**:
+### 7. Beri izin eksekusi pada script
 
-- `tensorflow` - Framework deep learning (versi untuk Windows)
-- `numpy` - Numerical computing
-- `librosa` - Audio processing dan MFCC extraction
-- `scikit-learn` - Machine learning utilities
-
-Tunggu proses instalasi selesai (bisa memakan waktu 5-15 menit tergantung kecepatan internet).
-
-Verifikasi instalasi dengan:
-
-```cmd
-python -c "import tensorflow; print(f'TensorFlow {tensorflow.__version__} installed successfully')"
+```bash
+chmod +x simulation/run_all.sh
 ```
 
----
+### 8. Verifikasi library
 
-### ✅ Step 7: Verifikasi Setup Lengkap
-
-Jalankan skrip verifikasi untuk memastikan semua library terinstal:
-
-```cmd
-python -c "
+```bash
+python - <<'PY'
 import tensorflow as tf
 import numpy as np
 import librosa
-from sklearn import preprocessing
-print('✅ Semua library berhasil diinstal!')
-print(f'   TensorFlow: {tf.__version__}')
-print(f'   NumPy: {np.__version__}')
-print(f'   Librosa: {librosa.__version__}')
-"
+import sklearn
+import fastapi
+import streamlit
+
+print("TensorFlow :", tf.__version__)
+print("NumPy      :", np.__version__)
+print("Librosa    :", librosa.__version__)
+print("Scikit-learn berhasil dimuat")
+print("FastAPI berhasil dimuat")
+print("Streamlit berhasil dimuat")
+PY
 ```
 
 ---
 
-## 📁 Struktur Proyek
+## Persiapan Dataset
 
-```
-lkti_dl_03-07/
-├── main.py                                          # Script training model
-├── convert_tflite.py                               # Script konversi ke TensorFlow Lite
-├── chickvoice_model.h5                             # Model terlatih (format Keras)
-├── chickvoice_mfcc_cnn.h5                          # Model alternatif
-├── chickvoice_model.tflite                         # Model optimized untuk edge device
-├── README.md                                        # Dokumentasi ini
-└── Poultry_Vocalization Signal_Dataset_for_Early_Disease_Detection/
-    └── Chicken_Audio_Dataset/
-        ├── Healthy/                                 # Audio suara ayam sehat (~300+ files)
-        ├── Noise/                                   # Audio noise kandang (~100+ files)
-        └── Unhealthy/                              # Audio suara ayam sakit (~300+ files)
-```
+Dataset tidak disarankan untuk disimpan langsung di Git karena terdiri dari banyak file audio.
 
----
+Dataset dapat diperoleh dari:
 
-## 🚀 Penggunaan
+[Enhancing Poultry Health Management Through Machine Learning-Based Analysis of Vocalization Signals Dataset](https://data.mendeley.com/datasets/zp4nf2dxbh/1)
 
-### Alur Kerja Lengkap
+Setelah diunduh, letakkan dataset dengan struktur berikut:
 
-```
-┌─────────────────────────────────────────────────┐
-│ 1. Aktifkan Virtual Environment                 │
-│    venv\Scripts\activate (CMD)                  │
-│    atau venv\Scripts\Activate.ps1 (PowerShell)  │
-└────────────────┬────────────────────────────────┘
-                 │
-┌────────────────▼────────────────────────────────┐
-│ 2. Jalankan Training Model                      │
-│    python main.py                               │
-│                                                  │
-│    Output: chickvoice_model.h5 & metrics        │
-└────────────────┬────────────────────────────────┘
-                 │
-┌────────────────▼────────────────────────────────┐
-│ 3. Konversi ke TensorFlow Lite                  │
-│    python convert_tflite.py                     │
-│                                                  │
-│    Output: chickvoice_model.tflite (optimized)  │
-└─────────────────────────────────────────────────┘
+```text
+Poultry_Vocalization Signal_Dataset_for_Early_Disease_Detection/
+└── Chicken_Audio_Dataset/
+    ├── Healthy/
+    │   ├── 1.wav
+    │   ├── 2.wav
+    │   └── ...
+    │
+    ├── Noise/
+    │   ├── 1.wav
+    │   ├── 2.wav
+    │   └── ...
+    │
+    └── Unhealthy/
+        ├── 1.wav
+        ├── 2.wav
+        └── ...
 ```
 
-### Step 1: Aktifkan Virtual Environment
+Periksa jumlah file:
 
-**CMD**:
-
-```cmd
-venv\Scripts\activate
+```bash
+find \
+  "Poultry_Vocalization Signal_Dataset_for_Early_Disease_Detection/Chicken_Audio_Dataset" \
+  -type f \
+  -name "*.wav" \
+  | wc -l
 ```
 
-**PowerShell**:
+Periksa setiap kelas:
 
-```powershell
-venv\Scripts\Activate.ps1
+```bash
+for class_name in Healthy Noise Unhealthy
+do
+  count=$(find \
+    "Poultry_Vocalization Signal_Dataset_for_Early_Disease_Detection/Chicken_Audio_Dataset/$class_name" \
+    -type f \
+    -name "*.wav" \
+    | wc -l)
+
+  echo "$class_name: $count file"
+done
 ```
 
 ---
 
-### Step 2: Jalankan Training Model
+## Menjalankan Simulasi
 
-Skrip `main.py` akan:
+Simulasi dapat dijalankan dengan satu perintah atau melalui tiga terminal terpisah.
 
-1. Memuat dataset audio dari folder `Chicken_Audio_Dataset/`
-2. Mengekstrak fitur MFCC dari setiap audio
-3. Membangun arsitektur CNN 1D
-4. Melatih model dengan dataset
-5. Menyimpan model ke file `chickvoice_model.h5`
+### Cara cepat
 
-Jalankan dengan:
+Aktifkan virtual environment:
 
-```cmd
+```bash
+source venv/bin/activate
+```
+
+Jalankan skenario outbreak:
+
+```bash
+./simulation/run_all.sh outbreak 2
+```
+
+Parameter:
+
+```text
+outbreak = nama skenario
+2        = interval antarevent dalam detik
+```
+
+Alamat layanan:
+
+| Layanan | Alamat |
+|---|---|
+| REST API | http://127.0.0.1:8000 |
+| Dokumentasi API | http://127.0.0.1:8000/docs |
+| Dashboard | http://localhost:8501 |
+
+Tekan `Ctrl+C` untuk menghentikan simulasi.
+
+### Skenario normal
+
+```bash
+./simulation/run_all.sh normal 2
+```
+
+Skenario ini mengambil mayoritas file audio dari kelas `Healthy`.
+
+### Skenario outbreak
+
+```bash
+./simulation/run_all.sh outbreak 2
+```
+
+Skenario ini meningkatkan pemilihan audio `Unhealthy`, terutama pada zona tertentu.
+
+### Skenario noisy
+
+```bash
+./simulation/run_all.sh noisy 2
+```
+
+Skenario ini meningkatkan pemilihan file dari kelas `Noise`.
+
+### Catatan tentang skenario
+
+Skenario hanya mengatur distribusi file audio yang dipilih dari dataset.
+
+Hasil yang dikirim ke dashboard tetap berasal dari prediksi model CNN. Model dapat menghasilkan prediksi yang berbeda dari label folder audio.
+
+Contoh:
+
+```text
+Label sumber   : Unhealthy
+Prediksi model : Healthy
+```
+
+Kondisi tersebut menunjukkan kesalahan klasifikasi model dan tidak boleh disembunyikan.
+
+---
+
+## Menjalankan Simulasi Secara Manual
+
+### Terminal 1: FastAPI
+
+```bash
+cd lkti_dl_03-07
+source venv/bin/activate
+
+python -m uvicorn simulation.api:app \
+  --host 127.0.0.1 \
+  --port 8000 \
+  --reload
+```
+
+### Terminal 2: Dashboard
+
+```bash
+cd lkti_dl_03-07
+source venv/bin/activate
+
+python -m streamlit run simulation/dashboard.py
+```
+
+### Terminal 3: Simulator audio
+
+```bash
+cd lkti_dl_03-07
+source venv/bin/activate
+
+python -m simulation.audio_simulator \
+  --scenario outbreak \
+  --interval 2
+```
+
+### Menjalankan sejumlah event tertentu
+
+Contoh 20 event:
+
+```bash
+python -m simulation.audio_simulator \
+  --scenario outbreak \
+  --interval 1 \
+  --iterations 20
+```
+
+---
+
+## Menjalankan Prediksi Satu Audio
+
+### Audio Healthy
+
+```bash
+python -m simulation.audio_simulator \
+  --audio "Poultry_Vocalization Signal_Dataset_for_Early_Disease_Detection/Chicken_Audio_Dataset/Healthy/1.wav" \
+  --zone A
+```
+
+### Audio Unhealthy
+
+```bash
+python -m simulation.audio_simulator \
+  --audio "Poultry_Vocalization Signal_Dataset_for_Early_Disease_Detection/Chicken_Audio_Dataset/Unhealthy/1.wav" \
+  --zone B
+```
+
+### Audio Noise
+
+```bash
+python -m simulation.audio_simulator \
+  --audio "Poultry_Vocalization Signal_Dataset_for_Early_Disease_Detection/Chicken_Audio_Dataset/Noise/1.wav" \
+  --zone C
+```
+
+### Prediksi tanpa mengirim ke API
+
+```bash
+python -m simulation.audio_simulator \
+  --audio "Poultry_Vocalization Signal_Dataset_for_Early_Disease_Detection/Chicken_Audio_Dataset/Healthy/1.wav" \
+  --zone A \
+  --dry-run
+```
+
+Contoh output:
+
+```text
+Model berhasil dimuat
+Input shape : (None, 200, 40)
+Output shape: (None, 3)
+Urutan kelas: ['Healthy', 'Noise', 'Unhealthy']
+
+Zona            : A
+Label sumber    : Healthy
+Prediksi model  : Healthy
+Confidence      : 98.41%
+Sample rate     : 22050 Hz
+Feature shape   : (1, 200, 40)
+```
+
+Nilai confidence dan sample rate dapat berbeda pada setiap file.
+
+---
+
+## Menjalankan Training Model
+
+File `main.py` digunakan untuk:
+
+1. Membaca seluruh audio dataset.
+2. Mengekstrak fitur MFCC.
+3. Menyamakan panjang matriks fitur.
+4. Mengubah label menjadi data numerik.
+5. Membagi data training dan testing.
+6. Melatih model 1D-CNN.
+7. Mengevaluasi model.
+8. Menyimpan model dan grafik evaluasi.
+
+Jalankan:
+
+```bash
+source venv/bin/activate
 python main.py
 ```
 
-**Output yang diharapkan**:
+Model disimpan sebagai:
 
+```text
+chickvoice_mfcc_cnn.h5
 ```
-Loading audio files from dataset...
-✅ Loaded 700+ audio samples
 
-Extracting MFCC features...
-⏳ Processing... 100%
+Grafik evaluasi disimpan pada:
 
-Building CNN model...
-Model Summary:
-  Total parameters: ~50K
-
-Training model...
-Epoch 1/20: loss=0.85, accuracy=0.78
-Epoch 2/20: loss=0.62, accuracy=0.85
-...
-Epoch 20/20: loss=0.12, accuracy=0.95
-
-✅ Model training complete!
-Model saved to: chickvoice_model.h5
-Accuracy: 95.2%
+```text
+evaluation_plots/
+├── plot_accuracy.png
+├── plot_confusion_matrix.png
+└── plot_loss.png
 ```
+
+Training dapat menimpa model dan grafik sebelumnya. Simpan salinan model jika hasil lama masih diperlukan.
 
 ---
 
-### Step 3: Konversi Model ke TensorFlow Lite
+## Konversi TensorFlow Lite
 
-Skrip `convert_tflite.py` akan mengoptimalkan model `.h5` agar dapat berjalan di perangkat edge dengan resource terbatas.
+Gunakan:
 
-Jalankan dengan:
-
-```cmd
+```bash
 python convert_tflite.py
 ```
 
-**Output yang diharapkan**:
+Hasil konversi:
 
-```
-Loading model from: chickvoice_model.h5
-Model loaded successfully!
-
-Converting to TensorFlow Lite...
-Applying quantization optimization...
-
-✅ Conversion successful!
-Model saved to: chickvoice_model.tflite
-File size: 450 KB (original: 2.1 MB)
-Compression ratio: 78.6%
+```text
+chickvoice_model.tflite
 ```
 
-Model `chickvoice_model.tflite` siap digunakan di mikrokontroler (ESP32/Raspberry Pi).
+Model TensorFlow Lite disiapkan untuk pengembangan menuju edge device.
+
+File `.tflite` belum membuktikan bahwa model sudah berjalan langsung pada ESP32. Implementasi pada mikrokontroler tetap memerlukan:
+
+- TensorFlow Lite Micro.
+- Firmware untuk akuisisi audio.
+- Implementasi MFCC yang konsisten dengan training.
+- Pengaturan memori perangkat.
+- Pengujian latensi.
+- Pengujian pada lingkungan kandang.
 
 ---
 
-### Step 4: Deaktifkan Virtual Environment (Opsional)
+## Preprocessing Audio
 
-Ketika selesai bekerja, deaktifkan venv dengan:
+Parameter preprocessing model saat ini:
 
-```cmd
-deactivate
+| Parameter | Nilai |
+|---|---|
+| Sample rate | Mempertahankan sample rate asli, `sr=None` |
+| Jumlah MFCC | 40 |
+| Panjang maksimum | 200 frame |
+| Input satu file | `(1, 200, 40)` |
+| Format audio | WAV |
+| Padding | Zero padding |
+| Pemotongan | Maksimal 200 frame |
+| Urutan kelas | Healthy, Noise, Unhealthy |
+
+Alur preprocessing:
+
+```text
+Audio WAV
+    │
+    ▼
+librosa.load(file, sr=None)
+    │
+    ▼
+librosa.feature.mfcc(n_mfcc=40)
+    │
+    ▼
+Matriks awal: (40, jumlah_frame)
+    │
+    ▼
+Padding atau crop: (40, 200)
+    │
+    ▼
+Transpose: (200, 40)
+    │
+    ▼
+Tambah dimensi batch: (1, 200, 40)
+```
+
+Model hanya dapat memberikan hasil yang konsisten jika preprocessing inference sama dengan preprocessing training.
+
+---
+
+## API dan Database
+
+FastAPI menyediakan endpoint berikut:
+
+| Method | Endpoint | Fungsi |
+|---|---|---|
+| GET | `/health` | Memeriksa status API |
+| POST | `/events` | Menyimpan hasil inferensi |
+| GET | `/events` | Mengambil riwayat event |
+| GET | `/latest` | Mengambil event terbaru setiap zona |
+| DELETE | `/events` | Menghapus seluruh event |
+
+### Memeriksa API
+
+```bash
+curl http://127.0.0.1:8000/health
+```
+
+### Melihat event terbaru
+
+```bash
+curl http://127.0.0.1:8000/latest
+```
+
+### Melihat 20 event terakhir
+
+```bash
+curl "http://127.0.0.1:8000/events?limit=20"
+```
+
+### Menghapus seluruh event
+
+```bash
+curl -X DELETE http://127.0.0.1:8000/events
+```
+
+Database lokal berada pada:
+
+```text
+simulation/chickvoice.db
+```
+
+Database tersebut tidak perlu disimpan di Git.
+
+---
+
+## Zona Waktu WIB
+
+Untuk menggunakan waktu Indonesia Barat, gunakan zona waktu:
+
+```text
+Asia/Jakarta
+```
+
+Contoh implementasi Python:
+
+```python
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+WIB = ZoneInfo("Asia/Jakarta")
+
+timestamp = datetime.now(WIB).isoformat()
+```
+
+Contoh output:
+
+```text
+2026-08-02T13:45:20+07:00
+```
+
+Hindari timestamp tanpa informasi zona waktu.
+
+Periksa penggunaan timezone pada repository:
+
+```bash
+grep -R "timezone.utc\|datetime.now" -n simulation
+```
+
+Jika simulator masih menggunakan UTC, ubah:
+
+```python
+datetime.now(timezone.utc).isoformat()
+```
+
+menjadi:
+
+```python
+datetime.now(ZoneInfo("Asia/Jakarta")).isoformat()
+```
+
+Tambahkan import:
+
+```python
+from zoneinfo import ZoneInfo
 ```
 
 ---
 
-## 📊 Dataset
+## File yang Tidak Disimpan di Git
 
-### Struktur Dataset
+File berikut sebaiknya masuk `.gitignore`:
 
-```
-Chicken_Audio_Dataset/
-├── Healthy/          (Suara Ayam Sehat)
-│   ├── healthy_001.wav
-│   ├── healthy_002.wav
-│   └── ... (~300+ files)
-│
-├── Unhealthy/        (Suara Ayam Sakit)
-│   ├── sick_001.wav
-│   ├── sick_002.wav
-│   └── ... (~300+ files)
-│
-└── Noise/            (Noise Kandang)
-    ├── noise_001.wav
-    ├── noise_002.wav
-    └── ... (~100+ files)
-```
+```gitignore
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
 
-### Karakteristik Dataset
+# Virtual environment
+venv/
+.venv/
+env/
+ENV/
 
-| Kelas         | Jumlah File | Durasi   | Deskripsi                             |
-| ------------- | ----------- | -------- | ------------------------------------- |
-| **Healthy**   | ~300+       | 5-30 sec | Suara normal ayam sehat di kandang    |
-| **Unhealthy** | ~300+       | 5-30 sec | Suara ayam dengan gangguan pernapasan |
-| **Noise**     | ~100+       | 5-30 sec | Noise latar kandang (kipas, air, dll) |
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
 
-### Preproses Data
+# Python tools
+.pytest_cache/
+.mypy_cache/
+.pyright/
+.ruff_cache/
+.ipynb_checkpoints/
 
-Model menggunakan fitur **MFCC (Mel-Frequency Cepstral Coefficients)**:
+# Build
+build/
+dist/
+*.egg-info/
 
-- **Jumlah MFCC**: 13 coefficients
-- **Hop Length**: 512
-- **FFT Size**: 2048
-- **Sample Rate**: 22050 Hz
+# Environment variables
+.env
+.env.*
+!.env.example
 
----
+# Runtime database and logs
+simulation/chickvoice.db
+simulation/logs/
+*.db
+*.sqlite
+*.sqlite3
+*.log
 
-## 🧠 Arsitektur Model
+# Generated folders
+recordings/
+uploads/
+outputs/
+tensorboard/
+checkpoint/
+checkpoints/
 
-### CNN 1D Architecture
-
-```
-Input Layer (MFCC Features)
-    ↓
-Conv1D (32 filters, kernel=3)
-    ↓
-BatchNormalization
-    ↓
-ReLU Activation
-    ↓
-MaxPooling1D (pool_size=2)
-    ↓
-Dropout (0.3)
-    ↓
-Conv1D (64 filters, kernel=3)
-    ↓
-BatchNormalization
-    ↓
-ReLU Activation
-    ↓
-MaxPooling1D (pool_size=2)
-    ↓
-Dropout (0.3)
-    ↓
-Flatten Layer
-    ↓
-Dense (128 units) + ReLU + Dropout(0.5)
-    ↓
-Dense (3 units) + Softmax
-    ↓
-Output (Healthy | Unhealthy | Noise)
+# Dataset lokal
+Poultry_Vocalization Signal_Dataset_for_Early_Disease_Detection/
 ```
 
-### Hyperparameter Training
+Jika file sudah pernah masuk tracking Git, `.gitignore` tidak langsung menghapusnya.
 
-| Parameter            | Nilai                    |
-| -------------------- | ------------------------ |
-| **Optimizer**        | Adam                     |
-| **Loss Function**    | Categorical Crossentropy |
-| **Batch Size**       | 32                       |
-| **Epochs**           | 20                       |
-| **Validation Split** | 20%                      |
-| **Learning Rate**    | 0.001                    |
+Gunakan:
 
----
-
-
-## 📝 Lisensi
-
-Proyek ini dibuat untuk keperluan akademik dan penelitian. Silakan hubungi tim pengembang untuk informasi lisensi lebih lanjut.
-
----
-
-## 🆘 Troubleshooting
-
-### Masalah: "Python command not found" atau "python is not recognized"
-
-**Solusi**:
-
-- Pastikan Python 3.11 sudah diinstall dan PATH sudah dikonfigurasi
-- Restart Command Prompt/PowerShell
-- Verifikasi dengan: `python --version`
-
----
-
-### Masalah: Virtual Environment tidak aktif
-
-**Solusi CMD**:
-
-```cmd
-venv\Scripts\activate
+```bash
+git rm -r --cached simulation/__pycache__
+git rm --cached simulation/chickvoice.db
+git rm -r --cached simulation/logs
+git rm -r --cached \
+  "Poultry_Vocalization Signal_Dataset_for_Early_Disease_Detection"
 ```
 
-**Solusi PowerShell**:
+Kemudian:
 
-```powershell
-venv\Scripts\Activate.ps1
+```bash
+git add .
+git status
 ```
 
-Jika error pada PowerShell, jalankan:
+Pastikan database, log, cache, virtual environment, dan dataset tidak muncul dalam daftar file yang akan di-commit.
 
-```powershell
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+---
+
+## Troubleshooting
+
+### `python3.11: command not found`
+
+Periksa paket yang tersedia:
+
+```bash
+dnf search python3.11
+```
+
+Instal:
+
+```bash
+sudo dnf install python3.11 python3.11-devel
+```
+
+### Virtual environment belum aktif
+
+```bash
+source venv/bin/activate
+```
+
+### `No module named tensorflow`
+
+```bash
+python -m pip install tensorflow
+```
+
+### `No module named librosa`
+
+```bash
+python -m pip install librosa soundfile
+```
+
+### `No module named uvicorn`
+
+```bash
+python -m pip install "uvicorn[standard]"
+```
+
+### `No module named streamlit`
+
+```bash
+python -m pip install streamlit streamlit-autorefresh
+```
+
+### Error `libsndfile`
+
+```bash
+sudo dnf install libsndfile libsndfile-devel
+```
+
+Kemudian:
+
+```bash
+python -m pip install --force-reinstall soundfile
+```
+
+### Port 8000 sudah digunakan
+
+```bash
+ss -ltnp | grep 8000
+```
+
+Cari proses Uvicorn:
+
+```bash
+ps aux | grep uvicorn
+```
+
+Hentikan proses lama atau terminal sebelumnya.
+
+### Port 8501 sudah digunakan
+
+```bash
+ss -ltnp | grep 8501
+```
+
+Jalankan dashboard pada port lain:
+
+```bash
+python -m streamlit run \
+  simulation/dashboard.py \
+  --server.port 8502
+```
+
+### API tidak dapat diakses
+
+```bash
+curl http://127.0.0.1:8000/health
+```
+
+Jika gagal, jalankan kembali:
+
+```bash
+python -m uvicorn simulation.api:app --reload
+```
+
+### Dataset tidak ditemukan
+
+Periksa path:
+
+```bash
+ls \
+  "Poultry_Vocalization Signal_Dataset_for_Early_Disease_Detection/Chicken_Audio_Dataset"
+```
+
+Output harus memiliki:
+
+```text
+Healthy
+Noise
+Unhealthy
+```
+
+### Bentuk input model tidak sesuai
+
+Periksa model:
+
+```bash
+python - <<'PY'
+import tensorflow as tf
+
+model = tf.keras.models.load_model(
+    "chickvoice_mfcc_cnn.h5",
+    compile=False
+)
+
+print("Input shape :", model.input_shape)
+print("Output shape:", model.output_shape)
+PY
+```
+
+Output yang diharapkan:
+
+```text
+Input shape : (None, 200, 40)
+Output shape: (None, 3)
 ```
 
 ---
 
-### Masalah: Instalasi TensorFlow lambat atau error
+## Batasan Sistem
 
-**Solusi**:
+ChickVoice masih berada pada tahap purwarupa penelitian.
 
-1. Upgrade pip: `python -m pip install --upgrade pip`
-2. Upgrade setuptools: `pip install --upgrade setuptools wheel`
-3. Install TensorFlow dengan versi spesifik untuk Windows 3.11:
-   ```cmd
-   pip install tensorflow==2.13.0
-   ```
+Batasan saat ini:
 
----
+- Simulasi menggunakan file audio dataset, bukan mikrofon kandang secara langsung.
+- Skenario `normal`, `outbreak`, dan `noisy` mengatur distribusi input simulasi.
+- Model belum diuji secara luas pada kandang ayam petelur komersial di Indonesia.
+- Akurasi pada dataset tidak otomatis sama dengan akurasi lapangan.
+- Model belum membedakan jenis penyakit secara spesifik.
+- Label `Unhealthy` menunjukkan indikasi suara abnormal, bukan diagnosis penyakit tertentu.
+- TensorFlow Lite belum berarti implementasi ESP32 telah selesai.
+- Sistem belum menggantikan pemeriksaan dokter hewan.
+- Sistem belum dapat disebut production ready.
 
-### Masalah: CUDA/GPU tidak terdeteksi (tidak ada GPU di system adalah normal)
+Status yang tepat:
 
-Jika ingin menggunakan GPU (opsional, hanya untuk mempercepat training):
-
-```cmd
-pip install tensorflow[and-cuda]==2.13.0
+```text
+Research Prototype
 ```
 
-Namun untuk kebanyakan laptop, menggunakan CPU sudah cukup.
+---
+
+## Tim Pengembang
+
+ChickVoice dikembangkan oleh:
+
+1. Hafidz Januar Faturahman
+2. Muhammad Naufal Syifau Rahman
+3. Farhan Esha Putra Kusuma Atmaja
+4. Lalita Bela
+
+Fakultas Teknik, Universitas Siliwangi.
 
 ---
 
-### Masalah: Dataset tidak ditemukan
+## Lisensi
 
-**Solusi**:
+Proyek ini dikembangkan untuk keperluan akademik dan penelitian.
 
-- Pastikan folder `Poultry_Vocalization Signal_Dataset_for_Early_Disease_Detection/Chicken_Audio_Dataset/` sudah ada
-- Pastikan subfolder `Healthy/`, `Unhealthy/`, dan `Noise/` berisi file audio
-- Verifikasi path pada script `main.py`
+Kode program, model, dan dokumentasi proyek mengikuti ketentuan yang ditetapkan oleh tim pengembang.
 
----
+Dataset memiliki sumber dan ketentuan lisensi tersendiri. Pengguna wajib mengikuti lisensi dari penyedia dataset asli.
 
-## 📞 Support & Contact
-
-Untuk pertanyaan atau issue teknis, silakan hubungi tim pengembang melalui repositori ini.
+Repository ini tidak memberikan jaminan bahwa hasil klasifikasi dapat digunakan sebagai diagnosis medis atau veteriner.
 
 ---
 
-## 🔗 Referensi
+## Referensi
 
 - [TensorFlow Documentation](https://www.tensorflow.org/)
+- [TensorFlow Lite](https://www.tensorflow.org/lite)
 - [Librosa Documentation](https://librosa.org/)
-- [MFCC Feature Extraction](https://en.wikipedia.org/wiki/Mel-frequency_cepstrum)
-- [CNN for Time Series Classification](https://arxiv.org/abs/1611.06455)
-- [Dataset](https://data.mendeley.com/datasets/zp4nf2dxbh/1)
+- [FastAPI Documentation](https://fastapi.tiangolo.com/)
+- [Streamlit Documentation](https://docs.streamlit.io/)
+- [Mendeley Poultry Vocalization Dataset](https://data.mendeley.com/datasets/zp4nf2dxbh/1)
 
 ---
 
-**Terakhir diupdate**: 2026-06-23  
-**Status**: ✅ Production Ready
+## Status Proyek
+
+```text
+Status              : Research Prototype
+Model input         : (None, 200, 40)
+Model output        : (None, 3)
+Jumlah kelas        : 3
+Kelas               : Healthy, Noise, Unhealthy
+Dashboard           : Streamlit
+API                 : FastAPI
+Database            : SQLite
+Edge model          : TensorFlow Lite
+Validasi lapangan   : Belum dilakukan secara penuh
+```
+
+**Terakhir diperbarui: Agustus 2026**
