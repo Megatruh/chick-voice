@@ -1,122 +1,54 @@
-# ============================================================================
-# ChickVoice Project .gitignore
-# ============================================================================
-
-# ============================================================================
-# DATASET & MODEL FILES (Large Files - DO NOT COMMIT)
-# ============================================================================
-
-# Dataset folder
-Poultry_Vocalization Signal_Dataset_for_Early_Disease_Detection/
-Chicken_Audio_Dataset/
-
-# Model files (H5 format - Keras/TensorFlow)
-*.h5
-
-# Model files (TensorFlow Lite format)
-*.tflite
-
-# Other large data files
-*.pickle
-*.pkl
-*.npy
-*.npz
-
-# ============================================================================
-# PYTHON VIRTUAL ENVIRONMENT
-# ============================================================================
-
-venv/
-ENV/
-env/
-.venv/
-.ENV
-
-# ============================================================================
-# PYTHON CACHE & COMPILED FILES
-# ============================================================================
-
+# Python cache
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
-.Python
-*.egg
-*.egg-info/
-dist/
-build/
-*.whl
 
-# ============================================================================
-# IDE & EDITOR FILES
-# ============================================================================
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
 
-# VS Code
+# IDE
 .vscode/
-*.code-workspace
-
-# PyCharm
 .idea/
-*.iml
-*.iws
-
-# Sublime Text
-*.sublime-project
-*.sublime-workspace
-
-# Vim
 *.swp
 *.swo
 *~
-
-# Emacs
-*~
-\#*\#
-.\#*
-
-# ============================================================================
-# OPERATING SYSTEM FILES
-# ============================================================================
-
-# macOS
 .DS_Store
-.AppleDouble
-.LSOverride
-*.swp
 
-# Windows
-Thumbs.db
-Desktop.ini
-*.lnk
-
-# Linux
-.directory
-
-# ============================================================================
-# LOGGING & TEMPORARY FILES
-# ============================================================================
-
-*.log
-*.tmp
-*.temp
+# Python tools
+.pytest_cache/
+.mypy_cache/
+.pyright/
+.ruff_cache/
 .ipynb_checkpoints/
-*.ipynb
 
-# ============================================================================
-# PROJECT SPECIFIC
-# ============================================================================
+# Build
+build/
+dist/
+*.egg-info/
 
-# TensorFlow/Keras artifacts
-.keras/
-*.ckpt
-*.pb
+# Local environment
+.env
+.env.*
+!.env.example
 
-# Training output (optional - uncomment if you want to ignore)
-# training_history/
-# predictions/
+# Runtime database and logs
+simulation/chickvoice.db
+simulation/logs/
+*.db
+*.sqlite
+*.sqlite3
+*.log
 
-# ============================================================================
-# DO NOT IGNORE (Whitelist)
-# ============================================================================
-# To commit specific files even if patterns above match them, use:
-# !important_file.txt
+# Generated runtime folders
+recordings/
+uploads/
+outputs/
+tensorboard/
+checkpoint/
+checkpoints/
+
+# Dataset lokal
+Poultry_Vocalization Signal_Dataset_for_Early_Disease_Detection/

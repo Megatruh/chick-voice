@@ -1,0 +1,10 @@
+tensorflow
+librosa
+soundfile
+numpy
+fastapi
+uvicorn[standard]
+requests
+streamlit
+streamlit-autorefresh
+pandas
